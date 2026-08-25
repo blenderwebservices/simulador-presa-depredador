@@ -25,7 +25,191 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
+    <!-- Landing Page Container -->
+    <div class="landing-container" id="landing-page">
+        <!-- Landing Header -->
+        <header class="landing-header">
+            <div class="landing-logo">
+                <span class="logo-icon">🧬</span>
+                <span class="logo-text-bold">BioSim</span>
+            </div>
+            <nav class="landing-nav">
+                <a href="#what-it-is" class="nav-link">Propósito</a>
+                <a href="#theory" class="nav-link">Teoría</a>
+                <a href="#audience" class="nav-link">Público</a>
+                <a href="#beneficiaries" class="nav-link">Profesionales</a>
+            </nav>
+            <button class="btn btn-primary cta-btn-nav" id="cta-start-nav">Iniciar Simulador</button>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="hero-content">
+                <span class="hero-badge">Modelación Matemática Interactiva</span>
+                <h1 class="hero-title">Explora la Dinámica de Sistemas Complejos</h1>
+                <p class="hero-subtitle">
+                    Un simulador biofilosófico interactivo que modela la interacción Depredador-Presa, desde ecosistemas naturales hasta conflictos de ideología social.
+                </p>
+                <div class="hero-actions">
+                    <button class="btn btn-primary btn-large cta-btn" id="cta-start-hero">
+                        <span>🚀</span> Comenzar Simulación
+                    </button>
+                    <a href="#theory" class="btn btn-secondary btn-large" id="btn-read-theory">
+                        <span>📖</span> Estudiar la Teoría
+                    </a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="canvas-container">
+                    <canvas id="hero-canvas"></canvas>
+                    <div class="canvas-overlay"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 1: What it is & Does -->
+        <section id="what-it-is" class="landing-section">
+            <div class="section-header">
+                <h2>¿Qué hace y pretende esta aplicación?</h2>
+                <p>Nuestra plataforma fusiona la ecología matemática con las ciencias sociales para simular comportamientos dinámicos en tiempo real.</p>
+            </div>
+            <div class="cards-grid">
+                <div class="landing-card">
+                    <div class="card-icon">📊</div>
+                    <h3>Simulación en Tiempo Real</h3>
+                    <p>Resuelve sistemas de ecuaciones diferenciales acopladas utilizando el método de Runge-Kutta de 4.º Orden (RK4) para proyectar trayectorias temporales precisas.</p>
+                </div>
+                <div class="landing-card">
+                    <div class="card-icon">🦊</div>
+                    <h3>Modelado Ecológico Clásico</h3>
+                    <p>Explora el modelo Lotka-Volterra no lineal, observando los ciclos de vida, reproducción, cacería y extinción de poblaciones biológicas.</p>
+                </div>
+                <div class="landing-card">
+                    <div class="card-icon">🧠</div>
+                    <h3>Modelado Socio-Ideológico</h3>
+                    <p>Simula dinámicas de confrontación social donde ideologías radicales ejercen presión y asimilación coercitiva sobre poblaciones pasivas.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Theory & Equations -->
+        <section id="theory" class="landing-section section-alt">
+            <div class="section-header">
+                <h2>Fundamentos Teóricos</h2>
+                <p>El simulador está respaldado por rigurosas formulaciones matemáticas y marcos filosóficos sistémicos.</p>
+            </div>
+            <div class="theory-layout">
+                <div class="theory-text">
+                    <h3>Lotka-Volterra y Análisis de Estabilidad</h3>
+                    <p>
+                        El modelo no lineal depredador-presa se rige por las siguientes ecuaciones acopladas de primer orden:
+                    </p>
+                    <div class="latex-box">
+                        <div class="latex-equation">$$\frac{dP}{dt} = r_1 P - a_1 P D$$</div>
+                        <div class="latex-equation">$$\frac{dD}{dt} = a_2 P D - r_2 D$$</div>
+                    </div>
+                    <p>
+                        Donde \(P\) representa la presa (o población pasiva) y \(D\) el depredador (o ideología radical).
+                    </p>
+                    <p>
+                        Mediante el cálculo de la **matriz Jacobiana** en los puntos de equilibrio, el simulador analiza los **autovalores (eigenvalues)** en tiempo real para clasificar la estabilidad:
+                    </p>
+                    <div class="latex-box">
+                        <div class="latex-equation">$$J = \begin{pmatrix} \frac{\partial f}{\partial P} & \frac{\partial f}{\partial D} \\ \frac{\partial g}{\partial P} & \frac{\partial g}{\partial D} \end{pmatrix}$$</div>
+                    </div>
+                    <p>
+                        Esto permite determinar analíticamente si el sistema converge a una **Paz Social Estable**, oscila en **Ciclos Límite**, o sufre un **Colapso Sistémico (Parasitoidismo)**.
+                    </p>
+                </div>
+                <div class="theory-philosophy">
+                    <div class="philosophy-box">
+                        <h4>La Filosofía Sistémica de Mahner y Bunge</h4>
+                        <p>
+                            Más allá de la biología, el simulador se apoya en el **Materialismo Sistémico** de Martin Mahner y Mario Bunge. Plantea que:
+                        </p>
+                        <ul>
+                            <li><strong>Plasticidad Neuronal:</strong> El cerebro humano posee un sistema nervioso plástico que permite el aprendizaje. No obstante, en un modelo social, la asimilación ideológica radical y comprometida bloquea este aprendizaje crítico frente a errores.</li>
+                            <li><strong>Parasitoidismo Social:</strong> A diferencia del parasitismo ordinario, el parasitoidismo ideológico consume a su huésped (población pasiva) hasta su colapso total, extinguiendo consecuentemente también a la población radical.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Target Audience -->
+        <section id="audience" class="landing-section">
+            <div class="section-header">
+                <h2>¿A quién está dirigida?</h2>
+                <p>Una herramienta versátil diseñada para la educación, la investigación y la comprensión de sistemas dinámicos.</p>
+            </div>
+            <div class="audience-grid">
+                <div class="audience-item">
+                    <span class="audience-number">01</span>
+                    <h4>Universidades y Academias</h4>
+                    <p>Estudiantes de matemáticas, biología y ciencias sociales que buscan visualizar conceptos abstractos de sistemas continuos de forma práctica.</p>
+                </div>
+                <div class="audience-item">
+                    <span class="audience-number">02</span>
+                    <h4>Laboratorios y Científicos</h4>
+                    <p>Investigadores que requieren simulaciones rápidas y control paramétrico para comparar modelos teóricos frente a datos empíricos.</p>
+                </div>
+                <div class="audience-item">
+                    <span class="audience-number">03</span>
+                    <h4>Divulgadores y Docentes</h4>
+                    <p>Profesores que desean herramientas visuales e interactivas de alta gama para dinamizar y enriquecer sus clases de ciencias y filosofía.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Beneficiaries -->
+        <section id="beneficiaries" class="landing-section section-alt">
+            <div class="section-header">
+                <h2>Profesionales Beneficiados</h2>
+                <p>Descubre cómo diferentes disciplinas aprovechan las capacidades analíticas de este simulador.</p>
+            </div>
+            <div class="beneficiaries-grid">
+                <div class="beneficiary-card">
+                    <div class="b-icon">🌿</div>
+                    <h3>Biólogos y Ecólogos</h3>
+                    <p>Modelan el equilibrio biológico en áreas protegidas, estimando tasas de mortalidad y cacería para prevenir la extinción ecológica.</p>
+                </div>
+                <div class="beneficiary-card">
+                    <div class="b-icon">🤝</div>
+                    <h3>Sociólogos y Científicos Sociales</h3>
+                    <p>Analizan el conflicto demográfico, la polarización política y el avance de ideologías radicales en comunidades civiles.</p>
+                </div>
+                <div class="beneficiary-card">
+                    <div class="b-icon">📐</div>
+                    <h3>Matemáticos e Ingenieros</h3>
+                    <p>Prueban la estabilidad de sistemas continuos y la convergencia de integradores de paso variable frente a modelos acoplados.</p>
+                </div>
+                <div class="beneficiary-card">
+                    <div class="b-icon">📜</div>
+                    <h3>Filósofos y Epistemólogos</h3>
+                    <p>Estudian empíricamente los postulados del materialismo sistémico y la asimilación neuronal de valores ideológicos.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Call to Action Banner -->
+        <section class="cta-banner">
+            <div class="cta-banner-content">
+                <h2>¿Listo para experimentar con los modelos?</h2>
+                <p>Configura escenarios preestablecidos o personaliza tus propias ecuaciones lineales o Lotka-Volterra hoy mismo.</p>
+                <button class="btn btn-primary btn-large cta-btn" id="cta-start-footer">
+                    <span>🚀</span> Iniciar Simulación Interactiva
+                </button>
+            </div>
+        </section>
+
+        <!-- Landing Footer -->
+        <footer class="landing-footer">
+            <p>&copy; 2026 Simulador Depredador-Presa. Desarrollado con rigurosidad científica y matemática. <br> Basado en principios de sistemas biofilosóficos.</p>
+        </footer>
+    </div>
+
+    <!-- Simulator Container -->
+    <div class="app-container" id="simulation-app" style="display: none;">
         <!-- Header -->
         <header class="app-header">
             <div class="header-logo">
@@ -34,6 +218,11 @@
                     <h1>Modelo Depredador-Presa</h1>
                     <p class="subtitle">Biofilosofía y Dinámicas Sociales</p>
                 </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" id="btn-back-to-landing" style="font-size: 0.85rem; padding: 0.5rem 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>←</span> Volver a la Presentación
+                </button>
             </div>
         </header>
 

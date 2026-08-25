@@ -151,7 +151,12 @@ const elements = {
     sideModelName: document.getElementById('side-model-name'),
     sideSimulationState: document.getElementById('side-simulation-state'),
     sideParamsList: document.getElementById('side-params-list'),
-    sideResultsList: document.getElementById('side-results-list')
+    sideResultsList: document.getElementById('side-results-list'),
+    
+    // Landing Page Elements
+    landingPage: document.getElementById('landing-page'),
+    simulationApp: document.getElementById('simulation-app'),
+    btnBackToLanding: document.getElementById('btn-back-to-landing')
 };
 
 // Initialize Application
@@ -160,6 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initPresets();
     setupEventListeners();
     setupWizardListeners();
+    initLandingListeners();
+    initHeroCanvas();
     goToStep(1);
 });
 
@@ -1448,4 +1455,218 @@ function updateBioPhilosophy() {
     elements.philosophyPlasticity.innerHTML = plasticityHtml;
     elements.philosophyIdeology.innerHTML = ideologyHtml;
     elements.philosophyParasitoidism.innerHTML = parasitoidismHtml;
+}
+
+// ==========================================
+// LANDING PAGE LOGIC & CANVAS ANIMATION
+// ==========================================
+
+function initLandingListeners() {
+    const startBtns = [
+        document.getElementById('cta-start-nav'),
+        document.getElementById('cta-start-hero'),
+        document.getElementById('cta-start-footer')
+    ];
+    
+    startBtns.forEach(btn => {
+        if (btn) {
+            btn.addEventListener('click', () => {
+                // Fade out landing page
+                elements.landingPage.classList.add('fade-out');
+                setTimeout(() => {
+                    elements.landingPage.style.display = 'none';
+                    elements.landingPage.classList.remove('fade-out');
+                    
+                    // Fade in simulation app
+                    elements.simulationApp.style.display = 'flex';
+                    elements.simulationApp.classList.add('fade-in');
+                    setTimeout(() => {
+                        elements.simulationApp.classList.remove('fade-in');
+                    }, 400);
+                }, 400);
+            });
+        }
+    });
+    
+    if (elements.btnBackToLanding) {
+        elements.btnBackToLanding.addEventListener('click', () => {
+            // Fade out simulation app
+            elements.simulationApp.classList.add('fade-out');
+            setTimeout(() => {
+                elements.simulationApp.style.display = 'none';
+                elements.simulationApp.classList.remove('fade-out');
+                
+                // Fade in landing page
+                elements.landingPage.style.display = 'block';
+                elements.landingPage.classList.add('fade-in');
+                setTimeout(() => {
+                    elements.landingPage.classList.remove('fade-in');
+                    // Force resize trigger for canvas
+                    window.dispatchEvent(new Event('resize'));
+                }, 400);
+            }, 400);
+        });
+    }
+}
+
+function initHeroCanvas() {
+    const canvas = document.getElementById('hero-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    let width, height;
+    function resize() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * window.devicePixelRatio;
+        canvas.height = rect.height * window.devicePixelRatio;
+        width = canvas.width;
+        height = canvas.height;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    
+    window.addEventListener('resize', resize);
+    resize();
+    
+    const particles = [];
+    const maxParticles = 60;
+    
+    let mouse = { x: null, y: null };
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = e.clientX - rect.left;
+        mouse.y = e.clientY - rect.top;
+    });
+    canvas.addEventListener('mouseleave', () => {
+        mouse.x = null;
+        mouse.y = null;
+    });
+    
+    for (let i = 0; i < maxParticles; i++) {
+        const radius = 30 + Math.random() * 120;
+        const angle = Math.random() * Math.PI * 2;
+        particles.push({
+            r: radius,
+            angle: angle,
+            speed: 0.01 + Math.random() * 0.015,
+            size: 1.5 + Math.random() * 2.5,
+            color: Math.random() > 0.5 ? '#06b6d4' : '#ec4899',
+            trail: []
+        });
+    }
+    
+    function draw() {
+        if (elements.landingPage.style.display === 'none') {
+            // Pause animation when landing is not visible to save CPU resources
+            requestAnimationFrame(draw);
+            return;
+        }
+        
+        ctx.clearRect(0, 0, width, height);
+        
+        const drawWidth = width / window.devicePixelRatio;
+        const drawHeight = height / window.devicePixelRatio;
+        
+        // Draw Grid
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.04)';
+        ctx.lineWidth = 1;
+        const gridStep = 40;
+        for (let x = 0; x < drawWidth; x += gridStep) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, drawHeight);
+            ctx.stroke();
+        }
+        for (let y = 0; y < drawHeight; y += gridStep) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(drawWidth, y);
+            ctx.stroke();
+        }
+        
+        // Draw Axes
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.08)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(35, drawHeight - 35);
+        ctx.lineTo(drawWidth - 20, drawHeight - 35);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(35, 20);
+        ctx.lineTo(35, drawHeight - 35);
+        ctx.stroke();
+        
+        // Axis labels
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.4)';
+        ctx.font = '500 10px var(--font-body)';
+        ctx.fillText('Población Presa (P)', drawWidth - 115, drawHeight - 18);
+        
+        ctx.save();
+        ctx.translate(18, 120);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Población Depredador (D)', 0, 0);
+        ctx.restore();
+        
+        // Fixed Point center
+        const cx = drawWidth / 2 + 10;
+        const cy = drawHeight / 2 - 10;
+        
+        ctx.fillStyle = 'rgba(139, 92, 246, 0.2)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8b5cf6';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+        ctx.fill();
+        
+        particles.forEach(p => {
+            p.angle += p.speed;
+            
+            const rx = p.r;
+            const ry = p.r * 0.75;
+            
+            let targetX = cx + rx * Math.cos(p.angle);
+            let targetY = cy + ry * Math.sin(p.angle);
+            
+            // Leaning effect to look like Volterra orbits
+            const dx = (targetX - cx) / cx;
+            targetY += dx * 25;
+            
+            if (mouse.x !== null && mouse.y !== null) {
+                const dist = Math.hypot(targetX - mouse.x, targetY - mouse.y);
+                if (dist < 100) {
+                    const force = (100 - dist) / 100 * 12;
+                    const angleToMouse = Math.atan2(mouse.y - targetY, mouse.x - targetX);
+                    targetX += Math.cos(angleToMouse) * force;
+                    targetY += Math.sin(angleToMouse) * force;
+                }
+            }
+            
+            p.trail.push({ x: targetX, y: targetY });
+            if (p.trail.length > 12) {
+                p.trail.shift();
+            }
+            
+            if (p.trail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(p.trail[0].x, p.trail[0].y);
+                for (let k = 1; k < p.trail.length; k++) {
+                    ctx.lineTo(p.trail[k].x, p.trail[k].y);
+                }
+                ctx.strokeStyle = p.color + '15';
+                ctx.lineWidth = p.size;
+                ctx.stroke();
+            }
+            
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(targetX, targetY, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        requestAnimationFrame(draw);
+    }
+    
+    requestAnimationFrame(draw);
 }
