@@ -26,15 +26,43 @@ const state = {
     importedData: null
 };
 
+const wizardState = {
+    currentStep: 1,
+    maxStepReached: 1
+};
+
+const stepInfo = {
+    1: {
+        title: "Selección de Modelo",
+        desc: "Elige el tipo de modelo matemático en el cual basar la simulación."
+    },
+    2: {
+        title: "Escenarios Preestablecidos",
+        desc: "Selecciona una plantilla de escenario configurada para ver dinámicas específicas."
+    },
+    3: {
+        title: "Ajuste de Parámetros",
+        desc: "Configura detalladamente los coeficientes, poblaciones iniciales y horizontes temporales."
+    },
+    4: {
+        title: "Simulación y Resultados",
+        desc: "Visualiza los gráficos temporales, retratos de fase, estabilidad y análisis conceptual."
+    },
+    5: {
+        title: "Resumen Final",
+        desc: "Revisa la conclusión final del sistema y decide los siguientes pasos."
+    }
+};
+
 // Chart instances
 let timeChart = null;
 let phaseChart = null;
 
 // DOM Elements
 const elements = {
-    // Tabs
-    tabLinear: document.getElementById('tab-linear'),
-    tabLv: document.getElementById('tab-lv'),
+    // Model Selection Cards
+    tabLinear: document.getElementById('btn-select-linear'),
+    tabLv: document.getElementById('btn-select-lv'),
     
     // Parameter sections
     linearParams: document.getElementById('linear-params'),
@@ -94,7 +122,36 @@ const elements = {
     // Philosophy Elements
     philosophyPlasticity: document.getElementById('philosophy-plasticity'),
     philosophyIdeology: document.getElementById('philosophy-ideology'),
-    philosophyParasitoidism: document.getElementById('philosophy-parasitoidism')
+    philosophyParasitoidism: document.getElementById('philosophy-parasitoidism'),
+
+    // Wizard Navigation Elements
+    prevStepBtn: document.getElementById('prev-step-btn'),
+    nextStepBtn: document.getElementById('next-step-btn'),
+    stepTitleText: document.getElementById('step-title-text'),
+    stepDescText: document.getElementById('step-desc-text'),
+    skipPresetsBtn: document.getElementById('skip-presets-btn'),
+    btnExportPdf: document.getElementById('btn-export-pdf'),
+    btnGotoSummary: document.getElementById('btn-goto-summary'),
+    simulationLoadingScreen: document.getElementById('simulation-loading-screen'),
+    simulationResultsContainer: document.getElementById('simulation-results-container'),
+    loadingMsg: document.getElementById('loading-msg'),
+    
+    // Summary Step
+    finalSummaryModel: document.getElementById('final-summary-model'),
+    finalSummaryStability: document.getElementById('final-summary-stability'),
+    finalSummaryPreyLbl: document.getElementById('final-summary-prey-lbl'),
+    finalSummaryPreyVal: document.getElementById('final-summary-prey-val'),
+    finalSummaryPredLbl: document.getElementById('final-summary-pred-lbl'),
+    finalSummaryPredVal: document.getElementById('final-summary-pred-val'),
+    finalSummaryParams: document.getElementById('final-summary-params'),
+    btnRepeatSim: document.getElementById('btn-repeat-sim'),
+    btnRestartSim: document.getElementById('btn-restart-sim'),
+    
+    // Sidebar Summary
+    sideModelName: document.getElementById('side-model-name'),
+    sideSimulationState: document.getElementById('side-simulation-state'),
+    sideParamsList: document.getElementById('side-params-list'),
+    sideResultsList: document.getElementById('side-results-list')
 };
 
 // Initialize Application
@@ -102,30 +159,30 @@ document.addEventListener('DOMContentLoaded', () => {
     initCharts();
     initPresets();
     setupEventListeners();
+    setupWizardListeners();
+    goToStep(1);
 });
 
-// Setup Presets in UI
+// Setup Presets in UI (filtered by model)
 function initPresets() {
     elements.presetsContainer.innerHTML = '';
-    presets.forEach(preset => {
+    const filteredPresets = presets.filter(preset => preset.model === state.model);
+    filteredPresets.forEach(preset => {
         const btn = document.createElement('button');
         btn.className = 'preset-card';
         btn.id = preset.id;
-        btn.textContent = preset.name;
+        btn.innerHTML = `<span style="font-weight:600; font-size:0.95rem; display:block; margin-bottom:0.25rem;">${preset.name}</span>`;
         btn.title = preset.description;
         btn.addEventListener('click', () => loadPreset(preset));
         elements.presetsContainer.appendChild(btn);
     });
-    // Activate the first preset by default
-    document.getElementById(presets[0].id).classList.add('active');
-    loadPreset(presets[0]);
 }
 
 // Load Preset Data
 function loadPreset(preset) {
-    // Update active class
     document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
-    document.getElementById(preset.id).classList.add('active');
+    const pCard = document.getElementById(preset.id);
+    if (pCard) pCard.classList.add('active');
 
     state.model = preset.model;
     
@@ -149,16 +206,12 @@ function loadPreset(preset) {
     
     // Update inputs and tabs UI
     updateUIFromState();
-    runSimulation();
+    goToStep(3); // Advance to parameters
 }
 
 // Bind event listeners to DOM controls
 function setupEventListeners() {
-    // Model tabs switching
-    elements.tabLinear.addEventListener('click', () => switchModel('linear'));
-    elements.tabLv.addEventListener('click', () => switchModel('lotka-volterra'));
-
-    // Input changes: Linear (updates state parameters and recalculates eigenvalues/stability in real-time)
+    // Input changes: Linear
     const linearInputs = [elements.matrixA11, elements.matrixA12, elements.matrixA21, elements.matrixA22];
     linearInputs.forEach(input => {
         input.addEventListener('input', () => {
@@ -181,15 +234,16 @@ function setupEventListeners() {
         updateMathCard();
     });
 
-
-    // Input changes: Lotka-Volterra (updates state parameters and recalculates stability in real-time)
+    // Input changes: Lotka-Volterra
     elements.lvInitP.addEventListener('input', (e) => {
         state.params.initP = parseFloat(e.target.value);
         elements.valLvInitP.textContent = state.params.initP;
+        updateMathCard();
     });
     elements.lvInitD.addEventListener('input', (e) => {
         state.params.initD = parseFloat(e.target.value);
         elements.valLvInitD.textContent = state.params.initD;
+        updateMathCard();
     });
     elements.lvR1.addEventListener('input', (e) => {
         state.params.r1 = parseFloat(e.target.value);
@@ -216,11 +270,40 @@ function setupEventListeners() {
     elements.simTime.addEventListener('input', (e) => {
         state.params.time = parseInt(e.target.value);
         elements.valSimTime.textContent = state.params.time;
+        updateMathCard();
     });
 
-    // Explicit Recalculate Button click
+    // Recalculate and trigger loading animation
     elements.btnRecalculate.addEventListener('click', () => {
-        runSimulation();
+        goToStep(4);
+        elements.simulationLoadingScreen.style.display = 'flex';
+        elements.simulationResultsContainer.style.display = 'none';
+        
+        const messages = [
+            "Aplicando Runge-Kutta de 4.º Orden...",
+            "Calculando matriz de coeficientes...",
+            "Analizando autovalores del Jacobiano...",
+            "Evaluando estabilidad del punto fijo...",
+            "Generando órbitas en espacio fase..."
+        ];
+        let msgIndex = 0;
+        elements.loadingMsg.textContent = messages[0];
+        
+        const intervalId = setInterval(() => {
+            msgIndex = (msgIndex + 1) % messages.length;
+            elements.loadingMsg.textContent = messages[msgIndex];
+        }, 350);
+        
+        setTimeout(() => {
+            clearInterval(intervalId);
+            runSimulation();
+            elements.simulationLoadingScreen.style.display = 'none';
+            elements.simulationResultsContainer.style.display = 'block';
+            
+            wizardState.maxStepReached = 5;
+            elements.nextStepBtn.disabled = false;
+            updateSidebarSummary();
+        }, 1800);
     });
 
     // CSV Import / Export
@@ -228,16 +311,455 @@ function setupEventListeners() {
     elements.btnExport.addEventListener('click', handleExport);
 }
 
-// Switch model tabs
+// Wizard controller and navigation
+function setupWizardListeners() {
+    // Model Selection Buttons
+    document.getElementById('btn-select-linear').addEventListener('click', () => {
+        switchModel('linear');
+        goToStep(2);
+    });
+    document.getElementById('btn-select-lv').addEventListener('click', () => {
+        switchModel('lotka-volterra');
+        goToStep(2);
+    });
+
+    // Skip presets card
+    elements.skipPresetsBtn.addEventListener('click', () => {
+        goToStep(3);
+    });
+
+    // Timeline step clicking (can jump to unlocked steps)
+    document.querySelectorAll('.timeline-step').forEach(stepNode => {
+        stepNode.addEventListener('click', () => {
+            const stepNum = parseInt(stepNode.getAttribute('data-step'));
+            if (stepNum <= wizardState.maxStepReached) {
+                goToStep(stepNum);
+            }
+        });
+    });
+
+    // Navigation arrows
+    elements.prevStepBtn.addEventListener('click', () => {
+        if (wizardState.currentStep > 1) {
+            goToStep(wizardState.currentStep - 1);
+        }
+    });
+    elements.nextStepBtn.addEventListener('click', () => {
+        if (wizardState.currentStep < wizardState.maxStepReached) {
+            goToStep(wizardState.currentStep + 1);
+        }
+    });
+
+    // Results panel CTA to Summary
+    elements.btnGotoSummary.addEventListener('click', () => {
+        goToStep(5);
+    });
+
+    // Restart and repeat simulation buttons in Summary
+    elements.btnRepeatSim.addEventListener('click', () => {
+        goToStep(3);
+    });
+    elements.btnRestartSim.addEventListener('click', () => {
+        wizardState.maxStepReached = 1;
+        state.results = null;
+        goToStep(1);
+    });
+
+    // PDF Report Generator button
+    elements.btnExportPdf.addEventListener('click', () => {
+        exportToPDF();
+    });
+}
+
+function goToStep(stepNum) {
+    if (stepNum < 1 || stepNum > 5) return;
+    
+    // Toggle wizard steps views
+    for (let i = 1; i <= 5; i++) {
+        const stepEl = document.getElementById(`step-${i}`);
+        if (stepEl) {
+            if (i === stepNum) {
+                stepEl.classList.add('active');
+            } else {
+                stepEl.classList.remove('active');
+            }
+        }
+    }
+    
+    // Update timeline nodes
+    document.querySelectorAll('.timeline-step').forEach(stepNode => {
+        const s = parseInt(stepNode.getAttribute('data-step'));
+        if (s === stepNum) {
+            stepNode.classList.add('active');
+            stepNode.classList.remove('completed');
+        } else if (s < stepNum) {
+            stepNode.classList.add('completed');
+            stepNode.classList.remove('active');
+        } else {
+            stepNode.classList.remove('active', 'completed');
+        }
+    });
+    
+    wizardState.currentStep = stepNum;
+    if (stepNum > wizardState.maxStepReached) {
+        wizardState.maxStepReached = stepNum;
+    }
+    
+    // Set headers
+    elements.stepTitleText.textContent = stepInfo[stepNum].title;
+    elements.stepDescText.textContent = stepInfo[stepNum].desc;
+    
+    // Manage nav arrow buttons
+    elements.prevStepBtn.disabled = (stepNum === 1);
+    elements.nextStepBtn.disabled = (stepNum >= wizardState.maxStepReached || stepNum === 4 || stepNum === 5);
+    
+    // Sync sidebar summary UI
+    updateSidebarSummary();
+    
+    // Step specific loads
+    if (stepNum === 2) {
+        initPresets();
+    } else if (stepNum === 4) {
+        if (state.results) {
+            elements.simulationLoadingScreen.style.display = 'none';
+            elements.simulationResultsContainer.style.display = 'block';
+        }
+    } else if (stepNum === 5) {
+        renderFinalSummary();
+    }
+}
+
+function updateSidebarSummary() {
+    if (!elements.sideModelName) return; // safety
+    
+    // 1. Model Name Badge
+    if (state.model === 'linear') {
+        elements.sideModelName.textContent = "Sistema Lineal (Social)";
+        elements.sideModelName.style.background = "rgba(6, 182, 212, 0.1)";
+        elements.sideModelName.style.borderColor = "rgba(6, 182, 212, 0.25)";
+        elements.sideModelName.style.color = "var(--color-prey)";
+    } else {
+        elements.sideModelName.textContent = "Lotka-Volterra (Biológico)";
+        elements.sideModelName.style.background = "rgba(244, 63, 94, 0.1)";
+        elements.sideModelName.style.borderColor = "rgba(244, 63, 94, 0.25)";
+        elements.sideModelName.style.color = "var(--color-predator)";
+    }
+    
+    // 2. Simulator State Text
+    if (wizardState.currentStep === 1) {
+        elements.sideSimulationState.textContent = "Seleccionando modelo...";
+    } else if (wizardState.currentStep === 2) {
+        elements.sideSimulationState.textContent = "Seleccionando escenario...";
+    } else if (wizardState.currentStep === 3) {
+        elements.sideSimulationState.textContent = "Configurando variables...";
+    } else if (wizardState.currentStep === 4) {
+        if (elements.simulationLoadingScreen.style.display === 'flex') {
+            elements.sideSimulationState.textContent = "Resolviendo ecuaciones...";
+        } else {
+            elements.sideSimulationState.textContent = "Simulación completada.";
+        }
+    } else if (wizardState.currentStep === 5) {
+        elements.sideSimulationState.textContent = "Resultados analizados.";
+    }
+    
+    // 3. Current parameters key-value list
+    elements.sideParamsList.innerHTML = '';
+    if (state.model === 'linear') {
+        elements.sideParamsList.appendChild(createSidebarItem("a11 (Presa)", state.params.a11.toFixed(3)));
+        elements.sideParamsList.appendChild(createSidebarItem("a12 (Impacto)", state.params.a12.toFixed(3)));
+        elements.sideParamsList.appendChild(createSidebarItem("a21 (Impacto)", state.params.a21.toFixed(3)));
+        elements.sideParamsList.appendChild(createSidebarItem("a22 (Radical)", state.params.a22.toFixed(3)));
+        elements.sideParamsList.appendChild(createSidebarItem("x1(0)", state.params.initX1.toLocaleString()));
+        elements.sideParamsList.appendChild(createSidebarItem("x2(0)", state.params.initX2.toLocaleString()));
+    } else {
+        elements.sideParamsList.appendChild(createSidebarItem("P0 (Presas)", state.params.initP));
+        elements.sideParamsList.appendChild(createSidebarItem("D0 (Depred.)", state.params.initD));
+        elements.sideParamsList.appendChild(createSidebarItem("r1 (Crec.)", state.params.r1.toFixed(4)));
+        elements.sideParamsList.appendChild(createSidebarItem("a1 (Caza)", state.params.a1.toFixed(5)));
+        elements.sideParamsList.appendChild(createSidebarItem("a2 (Reprod.)", state.params.a2.toFixed(5)));
+        elements.sideParamsList.appendChild(createSidebarItem("r2 (Mortal.)", state.params.r2.toFixed(4)));
+    }
+    elements.sideParamsList.appendChild(createSidebarItem("Tiempo", `${state.params.time} años`));
+    
+    // 4. Live Results / Stability
+    elements.sideResultsList.innerHTML = '';
+    if (state.results && state.results.prey && state.results.prey.length > 0) {
+        const finalPrey = state.results.prey[state.results.prey.length - 1];
+        const finalPred = state.results.predator[state.results.predator.length - 1];
+        
+        elements.sideResultsList.appendChild(createSidebarItem("Estabilidad", elements.valMetricStability.textContent));
+        elements.sideResultsList.appendChild(createSidebarItem("Final Presa", formatValue(finalPrey)));
+        elements.sideResultsList.appendChild(createSidebarItem("Final Pred.", formatValue(finalPred)));
+    } else {
+        elements.sideResultsList.innerHTML = `<span class="text-muted font-sm">Pendiente de simular</span>`;
+    }
+}
+
+function createSidebarItem(label, val) {
+    const div = document.createElement('div');
+    div.className = 'sidebar-item';
+    div.innerHTML = `<span class="lbl">${label}:</span> <span class="val">${val}</span>`;
+    return div;
+}
+
+function renderFinalSummary() {
+    elements.finalSummaryModel.textContent = state.model === 'linear' ? "Sistema Lineal (Social)" : "Lotka-Volterra (Biológico)";
+    elements.finalSummaryStability.textContent = elements.stabilityBadge.textContent;
+    
+    if (state.model === 'linear') {
+        elements.finalSummaryPreyLbl.textContent = "Población Pasiva Final (x1):";
+        elements.finalSummaryPredLbl.textContent = "Población Radical Final (x2):";
+    } else {
+        elements.finalSummaryPreyLbl.textContent = "Población Presas Final (P):";
+        elements.finalSummaryPredLbl.textContent = "Población Depredadores Final (D):";
+    }
+    
+    if (state.results && state.results.prey) {
+        const finalPrey = state.results.prey[state.results.prey.length - 1];
+        const finalPred = state.results.predator[state.results.predator.length - 1];
+        elements.finalSummaryPreyVal.textContent = formatValue(finalPrey);
+        elements.finalSummaryPredVal.textContent = formatValue(finalPred);
+    }
+    
+    const paramsDiv = elements.finalSummaryParams;
+    paramsDiv.innerHTML = '';
+    const addParamSummary = (name, val) => {
+        const d = document.createElement('div');
+        d.innerHTML = `<span style="color: var(--color-text-secondary); margin-right: 0.5rem;">${name}:</span><strong>${val}</strong>`;
+        paramsDiv.appendChild(d);
+    };
+    
+    if (state.model === 'linear') {
+        addParamSummary("a11", state.params.a11.toFixed(3));
+        addParamSummary("a12", state.params.a12.toFixed(3));
+        addParamSummary("a21", state.params.a21.toFixed(3));
+        addParamSummary("a22", state.params.a22.toFixed(3));
+        addParamSummary("x1(0)", state.params.initX1);
+        addParamSummary("x2(0)", state.params.initX2);
+    } else {
+        addParamSummary("P0", state.params.initP);
+        addParamSummary("D0", state.params.initD);
+        addParamSummary("r1", state.params.r1.toFixed(4));
+        addParamSummary("a1", state.params.a1.toFixed(5));
+        addParamSummary("a2", state.params.a2.toFixed(5));
+        addParamSummary("r2", state.params.r2.toFixed(4));
+    }
+    addParamSummary("Tiempo", `${state.params.time} años`);
+}
+
+// Generate premium report in PDF using jsPDF
+function exportToPDF() {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+        
+        // Brand Identity colors
+        const primaryColor = [139, 92, 246]; // Purple
+        const secondaryColor = [6, 182, 212]; // Cyan
+        const darkColor = [8, 9, 13]; // Near black
+        const textMuted = [100, 116, 139]; // Muted grey
+        
+        // Header Banner
+        doc.setFillColor(...darkColor);
+        doc.rect(0, 0, 210, 35, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.text("Simulación Depredador-Presa", 15, 18);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text("Reporte Científico & Biofilosófico", 15, 25);
+        doc.text(new Date().toLocaleString(), 145, 25);
+        
+        // Line break
+        let posY = 45;
+        
+        // Section: Configuración
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...primaryColor);
+        doc.text("1. Configuración del Modelo", 15, posY);
+        posY += 8;
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        const modelName = state.model === 'linear' ? "Sistema Lineal (Social)" : "Lotka-Volterra (Biológico)";
+        doc.text(`Modelo seleccionado: ${modelName}`, 15, posY);
+        posY += 8;
+        
+        // Parameters Table
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(...textMuted);
+        doc.text("Parámetro", 15, posY);
+        doc.text("Valor", 85, posY);
+        doc.text("Parámetro", 115, posY);
+        doc.text("Valor", 185, posY);
+        posY += 4;
+        
+        doc.setDrawColor(220, 220, 220);
+        doc.line(15, posY, 195, posY);
+        posY += 6;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
+        
+        const paramsList = [];
+        if (state.model === 'linear') {
+            paramsList.push(["a11 (Auto-crec. Presa)", state.params.a11]);
+            paramsList.push(["a12 (Impacto Pred. en Presa)", state.params.a12]);
+            paramsList.push(["a21 (Impacto Presa en Pred.)", state.params.a21]);
+            paramsList.push(["a22 (Auto-crec. Pred.)", state.params.a22]);
+            paramsList.push(["x1(0) (Pasiva Inicial)", state.params.initX1]);
+            paramsList.push(["x2(0) (Radical Inicial)", state.params.initX2]);
+        } else {
+            paramsList.push(["P0 (Presas Iniciales)", state.params.initP]);
+            paramsList.push(["D0 (Depredadores Iniciales)", state.params.initD]);
+            paramsList.push(["r1 (Crecimiento Presas)", state.params.r1]);
+            paramsList.push(["a1 (Éxito Caza Pred.)", state.params.a1]);
+            paramsList.push(["a2 (Eficiencia Reprod.)", state.params.a2]);
+            paramsList.push(["r2 (Mortalidad Pred.)", state.params.r2]);
+        }
+        paramsList.push(["Horizonte Tiempo", `${state.params.time} años`]);
+        
+        for (let i = 0; i < paramsList.length; i += 2) {
+            const p1 = paramsList[i];
+            const p2 = paramsList[i + 1] || ["", ""];
+            doc.text(`${p1[0]}:`, 15, posY);
+            doc.text(String(p1[1]), 85, posY);
+            if (p2[0]) {
+                doc.text(`${p2[0]}:`, 115, posY);
+                doc.text(String(p2[1]), 185, posY);
+            }
+            posY += 6;
+        }
+        
+        posY += 6;
+        
+        // Section: Análisis y Estabilidad
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...primaryColor);
+        doc.text("2. Análisis de Estabilidad y Autovalores", 15, posY);
+        posY += 8;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        
+        const stabilityStr = elements.stabilityBadge.textContent;
+        const finalPreyStr = elements.valMetricPrey.textContent;
+        const finalPredStr = elements.valMetricPredator.textContent;
+        
+        doc.text(`Clasificación del punto fijo: ${stabilityStr}`, 15, posY);
+        posY += 6;
+        doc.text(`Autovalor lambda_1: ${elements.eig1.textContent}`, 15, posY);
+        doc.text(`Autovalor lambda_2: ${elements.eig2.textContent}`, 115, posY);
+        posY += 6;
+        doc.text(`Población Pasiva/Presa Final: ${finalPreyStr}`, 15, posY);
+        doc.text(`Población Radical/Depredador Final: ${finalPredStr}`, 115, posY);
+        posY += 10;
+        
+        // Section: Gráficos
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...primaryColor);
+        doc.text("3. Gráficas de Simulación", 15, posY);
+        posY += 6;
+        
+        // Add charts side by side
+        if (timeChart && phaseChart) {
+            const timeChartImg = timeChart.toBase64Image();
+            const phaseChartImg = phaseChart.toBase64Image();
+            
+            doc.addImage(timeChartImg, 'PNG', 15, posY, 85, 55);
+            doc.addImage(phaseChartImg, 'PNG', 110, posY, 85, 55);
+            posY += 65;
+        }
+        
+        // Check overflow for page 2
+        if (posY > 210) {
+            doc.addPage();
+            posY = 20;
+        }
+        
+        // Section: Contexto Biofilosófico
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(...primaryColor);
+        doc.text("4. Análisis Biofilosófico", 15, posY);
+        posY += 8;
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.text("Plasticidad Neuronal (Mahner & Bunge)", 15, posY);
+        posY += 5;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const plasticText = elements.philosophyPlasticity.innerText || elements.philosophyPlasticity.textContent;
+        const splitPlastic = doc.splitTextToSize(plasticText, 180);
+        doc.text(splitPlastic, 15, posY);
+        posY += (splitPlastic.length * 4) + 6;
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Ideología Radical y Coerción Territorial", 15, posY);
+        posY += 5;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const ideoText = elements.philosophyIdeology.innerText || elements.philosophyIdeology.textContent;
+        const splitIdeo = doc.splitTextToSize(ideoText, 180);
+        doc.text(splitIdeo, 15, posY);
+        posY += (splitIdeo.length * 4) + 6;
+        
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Parasitoidismo Social", 15, posY);
+        posY += 5;
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const parasText = elements.philosophyParasitoidism.innerText || elements.philosophyParasitoidism.textContent;
+        const splitParas = doc.splitTextToSize(parasText, 180);
+        doc.text(splitParas, 15, posY);
+        posY += (splitParas.length * 4) + 6;
+        
+        // Footer (Page numbers)
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(...textMuted);
+            doc.text(`Página ${i} de ${totalPages}`, 95, 287);
+        }
+        
+        doc.save(`reporte_simulacion_${state.model}_${new Date().toISOString().slice(0,10)}.pdf`);
+    } catch (err) {
+        alert("Error al generar PDF: " + err.message);
+        console.error(err);
+    }
+}
+
+// Switch model types
 function switchModel(modelName) {
     state.model = modelName;
     updateUIFromState();
-    runSimulation();
+    initPresets();
 }
 
-// Dynamically recalculate eigenvalues, stability, and simulation from current DOM inputs in real-time
+// Update variables and sidebar in real-time
 function updateMathCard() {
-    runSimulation();
+    updateSidebarSummary();
 }
 
 // Sync UI inputs with the current state object
@@ -302,8 +824,8 @@ function initCharts() {
                 {
                     label: 'Población Pasiva / Presa',
                     data: [],
-                    borderColor: '#06b6d4',
-                    backgroundColor: 'rgba(6, 182, 212, 0.05)',
+                    borderColor: '#0891b2',
+                    backgroundColor: 'rgba(8, 145, 178, 0.05)',
                     borderWidth: 3,
                     fill: true,
                     tension: 0.1,
@@ -312,8 +834,8 @@ function initCharts() {
                 {
                     label: 'Población Radical / Depredador',
                     data: [],
-                    borderColor: '#f43f5e',
-                    backgroundColor: 'rgba(244, 63, 94, 0.05)',
+                    borderColor: '#e11d48',
+                    backgroundColor: 'rgba(225, 29, 72, 0.05)',
                     borderWidth: 3,
                     fill: true,
                     tension: 0.1,
@@ -322,7 +844,7 @@ function initCharts() {
                 {
                     label: 'Estadísticas Importadas (Presa/Pasiva)',
                     data: [],
-                    borderColor: 'rgba(6, 182, 212, 0.4)',
+                    borderColor: 'rgba(8, 145, 178, 0.4)',
                     borderDash: [5, 5],
                     borderWidth: 2,
                     fill: false,
@@ -332,7 +854,7 @@ function initCharts() {
                 {
                     label: 'Estadísticas Importadas (Dep/Radical)',
                     data: [],
-                    borderColor: 'rgba(244, 63, 94, 0.4)',
+                    borderColor: 'rgba(225, 29, 72, 0.4)',
                     borderDash: [5, 5],
                     borderWidth: 2,
                     fill: false,
@@ -347,19 +869,19 @@ function initCharts() {
             plugins: {
                 legend: {
                     position: 'top',
-                    labels: { color: '#f8fafc', font: { family: 'Inter', size: 11 } }
+                    labels: { color: '#334155', font: { family: 'Inter', size: 11 } }
                 }
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', font: { family: 'Inter' } },
-                    title: { display: true, text: 'Tiempo (Años)', color: '#94a3b8' }
+                    grid: { color: 'rgba(15, 23, 42, 0.05)' },
+                    ticks: { color: '#64748b', font: { family: 'Inter' } },
+                    title: { display: true, text: 'Tiempo (Años)', color: '#64748b' }
                 },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', font: { family: 'Inter' } },
-                    title: { display: true, text: 'Población', color: '#94a3b8' }
+                    grid: { color: 'rgba(15, 23, 42, 0.05)' },
+                    ticks: { color: '#64748b', font: { family: 'Inter' } },
+                    title: { display: true, text: 'Población', color: '#64748b' }
                 }
             }
         }
@@ -388,14 +910,14 @@ function initCharts() {
             },
             scales: {
                 x: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', font: { family: 'Inter' } },
-                    title: { display: true, text: 'Población Pasiva / Presas', color: '#94a3b8' }
+                    grid: { color: 'rgba(15, 23, 42, 0.05)' },
+                    ticks: { color: '#64748b', font: { family: 'Inter' } },
+                    title: { display: true, text: 'Población Pasiva / Presas', color: '#64748b' }
                 },
                 y: {
-                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                    ticks: { color: '#94a3b8', font: { family: 'Inter' } },
-                    title: { display: true, text: 'Población Radical / Depredadores', color: '#94a3b8' }
+                    grid: { color: 'rgba(15, 23, 42, 0.05)' },
+                    ticks: { color: '#64748b', font: { family: 'Inter' } },
+                    title: { display: true, text: 'Población Radical / Depredadores', color: '#64748b' }
                 }
             }
         }
