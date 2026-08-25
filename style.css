@@ -1820,14 +1820,14 @@ input[type="range"] {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 20px;
-    padding: 2.5rem 2rem;
+    padding: 0;
     transition: var(--transition-smooth);
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
     box-shadow: var(--shadow-premium);
     position: relative;
     top: 0;
+    overflow: visible;
 }
 
 .landing-card:hover {
@@ -1836,29 +1836,74 @@ input[type="range"] {
     box-shadow: 0 15px 35px rgba(139, 92, 246, 0.08);
 }
 
-.landing-card .card-icon {
-    font-size: 2.5rem;
-    width: 60px;
+.card-image-wrapper {
+    width: 100%;
+    height: 180px;
+    overflow: hidden;
+    position: relative;
+    border-radius: 20px 20px 0 0;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.08), rgba(139, 92, 246, 0.08));
+}
+
+/* Gradient fade at the bottom of the image for icon readability */
+.card-image-wrapper::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
     height: 60px;
+    background: linear-gradient(to bottom, transparent, var(--bg-secondary));
+    pointer-events: none;
+}
+
+.card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    display: block;
+}
+
+.landing-card:hover .card-img {
+    transform: scale(1.06);
+}
+
+.card-icon-overlap {
+    position: absolute;
+    bottom: -20px;
+    left: 20px;
+    font-size: 1.6rem;
+    width: 48px;
+    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(139, 92, 246, 0.06);
-    border-radius: 14px;
-    border: 1px solid rgba(139, 92, 246, 0.1);
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.12);
+    z-index: 3;
 }
 
-.landing-card h3 {
+.card-body {
+    padding: 2.25rem 1.5rem 1.75rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.card-body h3 {
     font-family: var(--font-heading);
-    font-size: 1.25rem;
+    font-size: 1.2rem;
     font-weight: 600;
     color: var(--color-text-primary);
 }
 
-.landing-card p {
+.card-body p {
     color: var(--color-text-secondary);
-    font-size: 0.95rem;
-    line-height: 1.6;
+    font-size: 0.93rem;
+    line-height: 1.65;
 }
 
 /* Section 2: Theory Layout */
